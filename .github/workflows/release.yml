@@ -1,0 +1,80 @@
+name: Build & Release ARPC
+
+on:
+  push:
+    tags:
+      - "v*"
+    paths:
+      - "VERSION"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Get-Content "VERSION" -Raw).Trim()
+          $tag = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "v$v" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Ensure Android SDK & Inno Setup 6
+        shell: pwsh
+        env:
+          ANDROID_SIGNING_KEY_B64: ${{ secrets.ANDROID_SIGNING_KEY_B64 }}
+        run: |
+          $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { $env:ANDROID_SDK_ROOT }
+          $sdkmgr = Get-ChildItem "$sdk\cmdline-tools" -Recurse -Filter "sdkmanager.bat" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not (Test-Path "$sdk\platforms\android-35\android.jar") -and $sdkmgr) {
+            "y`ny`ny`n" | & $sdkmgr.FullName "platforms;android-35" "build-tools;35.0.0" | Out-Null
+          }
+          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+          if ($env:ANDROID_SIGNING_KEY_B64) {
+            [IO.File]::WriteAllBytes("android\arpc-release.jks", [Convert]::FromBase64String($env:ANDROID_SIGNING_KEY_B64))
+          }
+
+      - name: Build ARPC.apk
+        run: cmd /c "build-apk.cmd --ci"
+
+      - name: Build ARPC-Setup.exe
+        run: cmd /c "build-exe.cmd --ci"
+
+      - name: Verify bin outputs
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "bin\ARPC-Setup.exe") -or -not (Test-Path "bin\ARPC.apk")) {
+            throw "Expected bin\ARPC-Setup.exe and bin\ARPC.apk were not produced."
+          }
+          Get-ChildItem "bin" | Select-Object Name, Length
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ARPC ${{ steps.ver.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            bin/ARPC-Setup.exe
+            bin/ARPC.apk

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <link rel="icon" type="image/svg+xml" href="/img/icon.svg">
+  <link rel="alternate icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/css/app.css">
+  <title>ARPC</title>
+</head>
+<body>
+  <div id="win-view" class="center-screen">
+    <div class="wcard">
+      <img src="/img/icon.svg" class="app-logo" alt="ARPC">
+      <h1>ARPC</h1>
+      <div class="badge"><span id="win-dot" class="dot wait"></span><span id="win-st">Loading...</span></div>
+      <div id="win-qr"></div>
+      <div class="winfo" id="win-inf"></div>
+      <div class="wrow">
+        <button class="wbtn-unbind" id="win-unbind">Unbind</button>
+        <button class="wbtn-stop" id="win-stop">Exit</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="browser-view" class="center-screen">
+    <div class="wcard">
+      <img src="/img/icon.svg" class="app-logo" alt="ARPC">
+      <h1>ARPC</h1>
+      <a href="/arpc.apk" style="display:block;text-decoration:none;margin-top:14px;">
+        <button class="btn" type="button" style="background:#22c55e;color:#04130a;">Download App (APK)</button>
+      </a>
+      <button class="btn" id="btn-open-installed" type="button" style="margin-top:10px;background:#1e293b;color:#f1f5f9;border:1px solid #23304c;">Open App</button>
+    </div>
+  </div>
+
+  <div id="pair-view" class="center-screen">
+    <div class="wcard">
+      <img src="/img/icon.svg" class="app-logo" alt="ARPC">
+      <h1 id="pair-title">Scan QR PC</h1>
+      <p id="pair-desc" style="margin:0 0 14px;font-size:13px;color:var(--muted);">Point the camera at the QR code on your PC screen.</p>
+      <video id="cam-preview" playsinline muted></video>
+      <canvas id="qr-scan-canvas" style="display:none;"></canvas>
+      <button class="btn" id="btn-scan-cam">Scan QR</button>
+    </div>
+  </div>
+
+  <div id="app-shell">
+    <div id="topbar">
+      <div style="display:flex;align-items:center;gap:7px;">
+        <img src="/img/icon.svg" class="top-logo" alt="">
+        <div class="badge">
+          <span id="conn-dot" class="dot wait"></span>
+          <span id="conn-label">Connecting...</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="stats-label" style="color:var(--muted);font-variant-numeric:tabular-nums;">0 FPS • 0.0 KB/s</div>
+        <button id="btn-android-unbind" type="button" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;">Unbind</button>
+      </div>
+    </div>
+
+    <div id="stage">
+      <canvas id="screen-canvas"></canvas>
+      <svg id="local-cursor" viewBox="0 0 24 24">
+        <path id="cursor-path" fill="#38bdf8" stroke="#000" stroke-width="1.8" d="M3 2l16 10-7 2 4 7-3 1.5-4-7-6 5z"/>
+      </svg>
+    </div>
+
+    <div id="bottombar">
+      <button class="tbtn" id="btn-kbd" title="Keyboard">⌨</button>
+      <button class="tbtn" data-mod="1">Ctrl</button>
+      <button class="tbtn" data-mod="2">Alt</button>
+      <button class="tbtn" data-mod="4">Shift</button>
+      <button class="tbtn" data-mod="8">Win</button>
+      <button class="tbtn" data-vk="27">Esc</button>
+      <button class="tbtn" data-vk="9">Tab</button>
+      <button class="tbtn" data-vk="46">Del</button>
+      <button class="tbtn" data-vk="37">←</button>
+      <button class="tbtn" data-vk="40">↓</button>
+      <button class="tbtn" data-vk="38">↑</button>
+      <button class="tbtn" data-vk="39">→</button>
+      <button class="tbtn" data-vk="36">Home</button>
+      <button class="tbtn" data-vk="35">End</button>
+      <button class="tbtn" data-vk="33">PgUp</button>
+      <button class="tbtn" data-vk="34">PgDn</button>
+      <button class="tbtn" data-vk="113">F2</button>
+      <button class="tbtn" data-vk="115">F4</button>
+      <button class="tbtn" data-vk="116">F5</button>
+      <button class="tbtn" data-vk="122">F11</button>
+    </div>
+  </div>
+
+  <input id="hidden-kbd" type="text" disabled readonly inputmode="none" enterkeyhint="enter" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+
+  <script src="/js/crypto_primitives.js"></script>
+  <script src="/js/crypto_aead.js"></script>
+  <script src="/vendor/jsqr.min.js"></script>
+  <script src="/js/state.js"></script>
+  <script src="/js/webrtc.js"></script>
+  <script src="/js/connection.js"></script>
+  <script src="/js/input.js"></script>
+  <script src="/js/views.js"></script>
+  <script src="/js/boot.js"></script>
+</body>
+</html>
