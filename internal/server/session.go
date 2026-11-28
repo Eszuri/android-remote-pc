@@ -29,8 +29,8 @@ func NewViewerSession(stream *protocol.SecureStream) *ViewerSession {
 		Stream:   stream,
 		rw:       1.0,
 		rh:       1.0,
-		maxWidth: 1280,
-		jpegQ:    75,
+		maxWidth: 1920,
+		jpegQ:    85,
 		forceKF:  true,
 	}
 	go vs.videoLoop()

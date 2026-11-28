@@ -24,14 +24,15 @@ var (
 	procBitBlt                    = modGDI32.NewProc("BitBlt")
 	procStretchBlt                = modGDI32.NewProc("StretchBlt")
 	procSetStretchBltMode         = modGDI32.NewProc("SetStretchBltMode")
+	procSetBrushOrgEx             = modGDI32.NewProc("SetBrushOrgEx")
 )
 
 const (
-	smCxScreen   = 0
-	smCyScreen   = 1
-	srccopy      = 0x00CC0020
-	biRGB        = 0
-	colorOnColor = 3
+	smCxScreen = 0
+	smCyScreen = 1
+	srccopy    = 0x00CC0020
+	biRGB      = 0
+	halftone   = 4
 )
 
 type bitmapInfoHeader struct {
@@ -104,7 +105,8 @@ func ensurePoolLocked(hdcScreen uintptr, dstW, dstH int) bool {
 	if hdcMem == 0 {
 		return false
 	}
-	procSetStretchBltMode.Call(hdcMem, colorOnColor)
+	procSetStretchBltMode.Call(hdcMem, halftone)
+	procSetBrushOrgEx.Call(hdcMem, 0, 0, 0)
 
 	var bi bitmapInfo
 	bi.bmiHeader.biSize = uint32(unsafe.Sizeof(bi.bmiHeader))
@@ -191,10 +193,10 @@ func CaptureROI(rx, ry, rw, rh float64, maxWidth int, quality int, prevHash uint
 		dstH = 2
 	}
 	if quality < 35 {
-		quality = 72
+		quality = 82
 	}
-	if quality > 92 {
-		quality = 92
+	if quality > 95 {
+		quality = 95
 	}
 
 	capPool.mu.Lock()

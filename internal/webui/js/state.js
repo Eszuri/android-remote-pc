@@ -10,7 +10,9 @@
     shell: document.getElementById("app-shell"),
     dot: document.getElementById("conn-dot"),
     connLabel: document.getElementById("conn-label"),
-    statsLabel: document.getElementById("stats-label"),
+    connSub: document.getElementById("conn-sub"),
+    landDot: document.getElementById("land-dot"),
+    landMs: document.getElementById("land-ms-val"),
     pairView: document.getElementById("pair-view"),
     pairTitle: document.getElementById("pair-title"),
     pairDesc: document.getElementById("pair-desc"),
@@ -53,9 +55,9 @@
   app.roiY = 0;
   app.roiW = 1;
   app.roiH = 1;
-  app.bytesThisSec = 0;
-  app.framesThisSec = 0;
   app.lastRTT = 0;
+  app.connRoute = "";
+  app.isLandscape = false;
   app.reconnecting = false;
   app.reconnectTimer = null;
   app.kbdOpen = false;
@@ -81,11 +83,12 @@
         if (app.ui.canvas.width !== b.width || app.ui.canvas.height !== b.height) {
           app.ui.canvas.width = b.width;
           app.ui.canvas.height = b.height;
+          app.ctx.imageSmoothingEnabled = true;
+          app.ctx.imageSmoothingQuality = "high";
           app.updateLocalCursorDOM();
         }
         app.ctx.drawImage(b, 0, 0);
         b.close();
-        app.framesThisSec++;
       });
     }
   };
@@ -113,7 +116,10 @@
     const type = plain[0];
     if (type === 0x03) {
       const msg = JSON.parse(app.dec.decode(plain.subarray(1)));
-      if (msg.cmd === "pong" && msg.ts) app.lastRTT = Math.max(1, Date.now() - msg.ts);
+      if (msg.cmd === "pong" && msg.ts) {
+        app.lastRTT = Math.max(1, Date.now() - msg.ts);
+        app.refreshLatencyUI();
+      }
       if (msg.cmd === "unbound" && app.clearLocalBindingAndShowScan) {
         app.clearLocalBindingAndShowScan();
       }
@@ -190,9 +196,23 @@
   }
   setupDecodeWorker();
 
-  app.setStatus = function (state, text) {
+  app.refreshLatencyUI = function () {
+    if (app.connRoute) {
+      const msTxt = app.lastRTT > 0 ? ` · ${app.lastRTT}ms` : "";
+      app.ui.connSub.textContent = `· ${app.connRoute}${msTxt}`;
+    } else {
+      app.ui.connSub.textContent = "";
+    }
+    app.ui.landMs.textContent = app.lastRTT > 0 ? `${app.lastRTT} ms` : "-- ms";
+  };
+
+  app.setStatus = function (state, text, route = "") {
     app.ui.dot.className = "dot " + state;
+    app.ui.landDot.className = "dot " + state;
     app.ui.connLabel.textContent = text;
+    app.connRoute = route;
+    if (!route) app.lastRTT = 0;
+    app.refreshLatencyUI();
   };
 
   app.updateLocalCursorDOM = function () {
@@ -242,8 +262,8 @@
   };
 
   app.sendROIUpdate = function (forceKF = false) {
-    const mw = app.connMode === "LAN_DIRECT" ? 1280 : 960;
-    const jq = app.connMode === "LAN_DIRECT" ? 76 : 66;
+    const mw = app.connMode === "LAN_DIRECT" ? 1920 : 1600;
+    const jq = app.connMode === "LAN_DIRECT" ? 86 : 80;
     app.sendControl({ cmd: "roi", rx: app.roiX, ry: app.roiY, rw: app.roiW, rh: app.roiH, kf: forceKF, mw, jq });
   };
 })();

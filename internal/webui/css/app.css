@@ -39,12 +39,12 @@ html, body {
   flex: 0 0 44px;
   height: 44px;
   z-index: 20;
-  background: rgba(19, 26, 42, 0.92);
-  backdrop-filter: blur(8px);
+  background: rgba(19, 26, 42, 0.94);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 0 10px;
   font-size: 12px;
 }
@@ -53,14 +53,69 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 4px 9px;
   border-radius: 999px;
   font-weight: 600;
   background: #1e293b;
   border: 1px solid var(--border);
 }
 
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.top-badge {
+  min-width: 0;
+  max-width: calc(100% - 114px);
+}
+
+#conn-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#conn-sub {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.top-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.top-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1e293b;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 38px;
+  height: 32px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.top-icon-btn:active { background: #293856; }
+
+.top-unbind-btn {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .dot.lan { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .dot.wan { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
 .dot.wait { background: var(--warn); }
@@ -94,7 +149,28 @@ html, body {
   object-fit: contain;
   transform-origin: 0 0;
   pointer-events: none;
+  display: block;
 }
+
+#land-ms {
+  display: none;
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  z-index: 19;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(11, 15, 25, 0.45);
+  color: rgba(241, 245, 249, 0.86);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+#land-ms .dot { width: 6px; height: 6px; }
 
 #local-cursor {
   position: fixed;
@@ -108,20 +184,70 @@ html, body {
 }
 
 #bottombar {
-  flex: 0 0 48px;
-  height: 48px;
+  flex: 0 0 46px;
+  height: 46px;
   z-index: 20;
   background: rgba(15, 21, 35, 0.96);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 5px;
   padding: 0 8px;
+  overflow: hidden;
+}
+
+.btm-pinned {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 6px;
+  margin-right: 6px;
+  border-right: 1px solid var(--border);
+}
+
+#btn-rotate-btm {
+  display: none;
+  min-width: 42px;
+  height: 32px;
+  padding: 0 10px;
+}
+
+.btm-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   overflow-x: auto;
   scrollbar-width: none;
   touch-action: pan-x;
 }
-#bottombar::-webkit-scrollbar { display: none; }
+.btm-scroll::-webkit-scrollbar { display: none; }
+
+#app-shell.landscape #topbar { display: none; }
+#app-shell.landscape #land-ms { display: inline-flex; }
+#app-shell.landscape #screen-canvas {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: fill;
+}
+#app-shell.landscape #bottombar {
+  flex: 0 0 42px;
+  height: 42px;
+  padding: 0 8px;
+}
+#app-shell.landscape #btn-rotate-btm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#app-shell.landscape .tbtn {
+  padding: 5px 10px;
+  font-size: 12px;
+  min-width: 34px;
+}
 
 .tbtn {
   flex: 0 0 auto;
@@ -178,7 +304,6 @@ video#cam-preview { width: 100%; border-radius: 10px; margin-bottom: 12px; displ
 }
 .wcard h1 { margin: 0 0 12px; font-size: 18px; font-weight: 700; }
 .app-logo { width: 48px; height: 48px; display: block; margin: 0 auto 10px; border-radius: 11px; }
-.top-logo { width: 20px; height: 20px; border-radius: 5px; flex: 0 0 auto; }
 #win-qr { margin: 16px auto 4px; background: #fff; padding: 10px; border-radius: 12px; display: none; }
 
 .winfo {

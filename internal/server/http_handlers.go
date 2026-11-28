@@ -1,12 +1,15 @@
 package server
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -49,10 +52,12 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("/api/pair-status", s.handlePairStatus)
 	mux.HandleFunc("/api/unbind", s.handleUnbindAPI)
 	mux.HandleFunc("/api/shutdown", s.handleShutdownAPI)
-	mux.HandleFunc("/arpc.apk", s.handleAPKDownload)
+	mux.HandleFunc("/arpc.apk", s.handleAPKRedirect)
+	mux.HandleFunc("/dl/", s.handleAPKDownload)
 	fileSrv := webui.FileHandler()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		w.Header().Set("Pragma", "no-cache")
 		fileSrv.ServeHTTP(w, r)
 	})
 	return mux
@@ -69,7 +74,7 @@ func isLoopbackReq(r *http.Request) bool {
 	return hostStr == "127.0.0.1" || hostStr == "::1"
 }
 
-func (s *Service) handleAPKDownload(w http.ResponseWriter, r *http.Request) {
+func findLatestAPK() (string, os.FileInfo, string) {
 	exePath, _ := os.Executable()
 	exeDir := filepath.Dir(exePath)
 	candidates := []string{
@@ -78,15 +83,65 @@ func (s *Service) handleAPKDownload(w http.ResponseWriter, r *http.Request) {
 		filepath.Join("bin", "ARPC.apk"),
 		"ARPC.apk",
 	}
+	var bestPath string
+	var bestInfo os.FileInfo
 	for _, p := range candidates {
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			w.Header().Set("Content-Type", "application/vnd.android.package-archive")
-			w.Header().Set("Content-Disposition", `attachment; filename="ARPC.apk"`)
-			http.ServeFile(w, r, p)
-			return
+			if bestInfo == nil || st.ModTime().After(bestInfo.ModTime()) {
+				bestPath = p
+				bestInfo = st
+			}
 		}
 	}
-	http.Error(w, "APK file not found", http.StatusNotFound)
+	if bestPath == "" {
+		return "", nil, ""
+	}
+	f, err := os.Open(bestPath)
+	if err != nil {
+		return "", nil, ""
+	}
+	defer f.Close()
+	h := sha256.New()
+	_, _ = io.Copy(h, f)
+	return bestPath, bestInfo, hex.EncodeToString(h.Sum(nil)[:4])
+}
+
+func setNoStoreHeaders(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+}
+
+func (s *Service) handleAPKRedirect(w http.ResponseWriter, r *http.Request) {
+	setNoStoreHeaders(w)
+	_, _, tag := findLatestAPK()
+	if tag == "" {
+		http.Error(w, "APK file not found", http.StatusNotFound)
+		return
+	}
+	http.Redirect(w, r, "/dl/"+tag+"/ARPC-"+tag+".apk", http.StatusFound)
+}
+
+func (s *Service) handleAPKDownload(w http.ResponseWriter, r *http.Request) {
+	setNoStoreHeaders(w)
+	apkPath, st, tag := findLatestAPK()
+	if apkPath == "" {
+		http.Error(w, "APK file not found", http.StatusNotFound)
+		return
+	}
+	f, err := os.Open(apkPath)
+	if err != nil {
+		http.Error(w, "APK file not found", http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+	w.Header().Set("Content-Type", "application/vnd.android.package-archive")
+	w.Header().Set("Content-Disposition", `attachment; filename="ARPC-`+tag+`.apk"`)
+	w.Header().Set("Content-Length", strconv.FormatInt(st.Size(), 10))
+	w.WriteHeader(http.StatusOK)
+	if r.Method != http.MethodHead {
+		_, _ = io.Copy(w, f)
+	}
 }
 
 func (s *Service) PerformUnbind() error {

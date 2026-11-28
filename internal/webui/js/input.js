@@ -251,7 +251,39 @@
   let fullHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
   let imeWasShrunk = false;
   const btnKbd = document.getElementById("btn-kbd");
+  const btnRotTop = document.getElementById("btn-rotate-top");
+  const btnRotBtm = document.getElementById("btn-rotate-btm");
   const modBtns = Array.from(document.querySelectorAll("[data-mod]"));
+
+  app.setLandscape = function (land, notifyNative = true) {
+    app.isLandscape = Boolean(land);
+    app.ui.shell.classList.toggle("landscape", app.isLandscape);
+    imeWasShrunk = false;
+    fullHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    if (notifyNative) {
+      if (app.isNativeAPK && window.arpcNative.setLandscape) {
+        try { window.arpcNative.setLandscape(app.isLandscape); } catch (_) {}
+      } else if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock(app.isLandscape ? "landscape" : "portrait").catch(() => {});
+      }
+    }
+    setTimeout(() => {
+      fullHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      app.syncViewportLayout();
+    }, 120);
+  };
+
+  window.onAndroidOrientation = (land) => {
+    app.setLandscape(land, false);
+  };
+
+  const onRotateClick = (e) => {
+    e.preventDefault();
+    if (app.kbdOpen) app.closeSoftKeyboard(true);
+    app.setLandscape(!app.isLandscape, true);
+  };
+  btnRotTop.addEventListener("click", onRotateClick);
+  btnRotBtm.addEventListener("click", onRotateClick);
 
   function resetKbdSentinel() {
     app.ui.kbd.value = " ";
@@ -382,7 +414,7 @@
 
   app.ui.kbd.addEventListener("blur", (e) => {
     if (!app.kbdOpen) return;
-    if (e.relatedTarget && app.ui.bottom.contains(e.relatedTarget) && e.relatedTarget !== btnKbd) {
+    if (e.relatedTarget && app.ui.bottom.contains(e.relatedTarget) && e.relatedTarget !== btnKbd && e.relatedTarget !== btnRotBtm) {
       try { app.ui.kbd.focus({ preventScroll: true }); } catch (_) { app.ui.kbd.focus(); }
       return;
     }

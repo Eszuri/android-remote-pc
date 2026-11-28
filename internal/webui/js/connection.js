@@ -160,6 +160,7 @@
   app.clearLocalBindingAndShowScan = function () {
     if (app.reconnectTimer) { clearTimeout(app.reconnectTimer); app.reconnectTimer = null; }
     if (app.closeSoftKeyboard) app.closeSoftKeyboard(true);
+    if (app.setLandscape && app.isLandscape) app.setLandscape(false);
     if (app.activeWS) {
       app.activeWS.onclose = null;
       try { app.activeWS.close(); } catch (_) {}
@@ -266,13 +267,13 @@
     app.connMode = mode;
     app.setStatus(
       mode === "LAN_DIRECT" ? "lan" : "wan",
-      mode === "LAN_DIRECT" ? `${app.bound.hostname} • Local Wi-Fi` : `${app.bound.hostname} • Remote Direct`
+      app.bound.hostname,
+      mode === "LAN_DIRECT" ? "Wi-Fi" : "Remote"
     );
     app.sendROIUpdate(true);
 
     ws.onmessage = (ev) => {
       if (typeof ev.data === "string") return;
-      app.bytesThisSec += ev.data.byteLength;
       if (app.decodeWorker) {
         app.decodeWorker.postMessage({ type: "pkt", buf: ev.data }, [ev.data]);
       } else {

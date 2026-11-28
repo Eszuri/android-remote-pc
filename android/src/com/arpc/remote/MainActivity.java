@@ -3,7 +3,9 @@ package com.arpc.remote;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Rect;
@@ -13,6 +15,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -31,9 +34,11 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
     private static final int REQ_CAMERA = 101;
+    private FrameLayout rootLayout;
     private WebView webView;
     private PermissionRequest pendingPermRequest;
     private boolean wasImeVisible = false;
+    private boolean landscapeMode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,9 +48,16 @@ public class MainActivity extends Activity {
         win.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         win.setStatusBarColor(Color.parseColor("#0B0F19"));
         win.setNavigationBarColor(Color.parseColor("#0B0F19"));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams lp = win.getAttributes();
+            lp.layoutInDisplayCutoutMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            win.setAttributes(lp);
+        }
 
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.parseColor("#0B0F19"));
+        rootLayout = new FrameLayout(this);
+        rootLayout.setBackgroundColor(Color.parseColor("#0B0F19"));
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#0B0F19"));
@@ -116,16 +128,25 @@ public class MainActivity extends Activity {
             }
         });
 
-        root.addView(webView, new FrameLayout.LayoutParams(
+        rootLayout.addView(webView, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
         ));
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             win.setDecorFitsSystemWindows(false);
-            root.setOnApplyWindowInsetsListener((v, insets) -> {
-                Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
-                v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            rootLayout.setOnApplyWindowInsetsListener((v, insets) -> {
+                if (landscapeMode) {
+                    Insets ime = insets.getInsets(WindowInsets.Type.ime());
+                    v.setPadding(0, 0, 0, ime.bottom);
+                } else {
+                    Insets bars = insets.getInsets(
+                            WindowInsets.Type.systemBars()
+                            | WindowInsets.Type.displayCutout()
+                            | WindowInsets.Type.ime()
+                    );
+                    v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                }
                 boolean imeNow = insets.isVisible(WindowInsets.Type.ime());
                 if (wasImeVisible && !imeNow && webView != null) {
                     webView.evaluateJavascript("window.onAndroidIMEClosed && window.onAndroidIMEClosed();", null);
@@ -134,10 +155,10 @@ public class MainActivity extends Activity {
                 return WindowInsets.CONSUMED;
             });
         } else {
-            root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            rootLayout.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
                 Rect r = new Rect();
-                root.getWindowVisibleDisplayFrame(r);
-                int screenH = root.getRootView().getHeight();
+                rootLayout.getWindowVisibleDisplayFrame(r);
+                int screenH = rootLayout.getRootView().getHeight();
                 int keypadH = screenH - r.bottom;
                 boolean imeNow = keypadH > screenH * 0.16;
                 if (wasImeVisible && !imeNow && webView != null) {
@@ -147,7 +168,8 @@ public class MainActivity extends Activity {
             });
         }
 
-        setContentView(root);
+        setContentView(rootLayout);
+        applyWindowMode(false);
 
         String startURL = "https://arpc.app/index.html";
         String frag = extractFragment(getIntent());
@@ -186,6 +208,70 @@ public class MainActivity extends Activity {
                 pendingPermRequest.deny();
             }
             pendingPermRequest = null;
+        }
+    }
+
+    void setLandscape(final boolean land) {
+        runOnUiThread(() -> {
+            landscapeMode = land;
+            setRequestedOrientation(land
+                    ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            applyWindowMode(land);
+            if (rootLayout != null) {
+                rootLayout.requestApplyInsets();
+            }
+        });
+    }
+
+    private void applyWindowMode(boolean land) {
+        Window win = getWindow();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController wic = win.getInsetsController();
+            if (wic != null) {
+                if (land) {
+                    wic.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                    wic.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                } else {
+                    wic.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                }
+            }
+        } else {
+            View decor = win.getDecorView();
+            if (land) {
+                decor.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                );
+            } else {
+                decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+            }
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        boolean land = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE;
+        landscapeMode = land;
+        applyWindowMode(land);
+        if (rootLayout != null) {
+            rootLayout.requestApplyInsets();
+        }
+        if (webView != null) {
+            webView.evaluateJavascript("window.onAndroidOrientation && window.onAndroidOrientation(" + land + ");", null);
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && landscapeMode) {
+            applyWindowMode(true);
         }
     }
 

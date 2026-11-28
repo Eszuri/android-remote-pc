@@ -180,6 +180,12 @@
 
   app.initAndroidBrowserView = function () {
     document.getElementById("browser-view").style.display = "flex";
+    const dlLink = document.getElementById("apk-dl-link");
+    const refreshAPKHref = () => {
+      dlLink.href = "/arpc.apk?t=" + Date.now();
+    };
+    refreshAPKHref();
+    dlLink.addEventListener("click", refreshAPKHref);
     const h = location.hash.startsWith("#") ? location.hash.slice(1) : "";
     const fallback = encodeURIComponent(location.href);
     const intentURL = h

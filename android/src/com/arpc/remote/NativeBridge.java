@@ -1,6 +1,5 @@
 package com.arpc.remote;
 
-import android.app.Activity;
 import android.content.Context;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.JavascriptInterface;
@@ -14,12 +13,17 @@ import java.net.NetworkInterface;
 import java.util.Enumeration;
 
 public final class NativeBridge {
-    private final Activity activity;
+    private final MainActivity activity;
     private final WebView webView;
 
-    NativeBridge(Activity activity, WebView webView) {
+    NativeBridge(MainActivity activity, WebView webView) {
         this.activity = activity;
         this.webView = webView;
+    }
+
+    @JavascriptInterface
+    public void setLandscape(final boolean land) {
+        activity.setLandscape(land);
     }
 
     @JavascriptInterface

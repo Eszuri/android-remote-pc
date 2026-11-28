@@ -35,7 +35,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  if (event.request.method !== "GET" || url.pathname.startsWith("/ws") || url.pathname.startsWith("/api") || url.pathname === "/arpc.apk") {
+  if (event.request.method !== "GET" || url.pathname.startsWith("/ws") || url.pathname.startsWith("/api") || url.pathname === "/arpc.apk" || url.pathname.startsWith("/dl/")) {
     return;
   }
   event.respondWith(
